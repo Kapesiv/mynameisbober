@@ -76,19 +76,22 @@ function showLogin() {
       const game = new Game(canvas);
       await game.connect(name, selectedGender);
       loginDiv.remove();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to connect:', err);
       playBtn.disabled = false;
       playBtn.textContent = 'RETRY';
       const existing = loginDiv.querySelector('.error-msg');
+      const msg = err?.message || err?.toString() || 'Unknown error';
       if (!existing) {
         const errMsg = document.createElement('p');
         errMsg.className = 'error-msg';
         errMsg.style.color = '#ff4444';
         errMsg.style.fontSize = '13px';
         errMsg.style.marginTop = '8px';
-        errMsg.textContent = 'Connection failed. Is the server running?';
+        errMsg.textContent = `Connection failed: ${msg}`;
         loginDiv.appendChild(errMsg);
+      } else {
+        existing.textContent = `Connection failed: ${msg}`;
       }
     }
   };
