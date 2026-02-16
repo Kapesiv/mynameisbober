@@ -288,7 +288,7 @@ export class DungeonRoom extends Room<DungeonState> {
       runtime.attackTimer = Math.max(0, runtime.attackTimer - dt);
 
       // Find closest player
-      let closestPlayer: PlayerState | null = null;
+      let closestPlayer: PlayerState | null = null as PlayerState | null;
       let closestDist = Infinity;
       this.state.players.forEach((p) => {
         if (p.stats.hp <= 0) return;

@@ -144,7 +144,9 @@ export class Game {
 
   private setupRoomListeners(room: any) {
     room.state.players.onAdd((player: any, sessionId: string) => {
+      console.log('[DEBUG] onAdd player:', sessionId, 'name:', player.name, 'local:', this.network.getSessionId());
       if (sessionId === this.network.getSessionId()) return;
+      console.log('[DEBUG] Creating RemotePlayer at', player.position.x, player.position.y, player.position.z);
       const remote = new RemotePlayer(this.sceneManager.scene, sessionId, player.name);
       remote.targetPosition.set(player.position.x, player.position.y, player.position.z);
       this.remotePlayers.set(sessionId, remote);
