@@ -52,6 +52,10 @@ export class InputManager {
     return this.keys.get(code) || false;
   }
 
+  isMoving(): boolean {
+    return this.isKey('KeyW') || this.isKey('KeyS') || this.isKey('KeyA') || this.isKey('KeyD');
+  }
+
   consumeMouse(): { dx: number; dy: number } {
     const result = { dx: this.mouseDx, dy: this.mouseDy };
     this.mouseDx = 0;

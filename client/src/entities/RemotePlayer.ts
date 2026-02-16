@@ -7,8 +7,11 @@ export class RemotePlayer {
   public targetPosition = new THREE.Vector3();
   public targetRotation = 0;
 
-  constructor(scene: THREE.Scene, public id: string, public name: string) {
+  constructor(scene: THREE.Scene, public id: string, public name: string,
+              initialX = 0, initialY = 0, initialZ = 0) {
     this.mesh = this.createPlayerMesh(0xff4444);
+    this.mesh.position.set(initialX, initialY, initialZ);
+    this.targetPosition.set(initialX, initialY, initialZ);
     this.nameSprite = this.createNameTag(name);
     this.mesh.add(this.nameSprite);
     scene.add(this.mesh);

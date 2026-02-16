@@ -10,6 +10,7 @@ export interface DungeonDef {
 
 export interface DungeonRoomDef {
   id: string;
+  floorName?: string;
   spawns: MonsterSpawn[];
   connections: string[]; // connected room ids
 }

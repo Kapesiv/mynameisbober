@@ -24,6 +24,7 @@ export class PlayerStatsState extends Schema {
   level: number = 1;
   xp: number = 0;
   xpToNext: number = 100;
+  skillPoints: number = 0;
 }
 defineTypes(PlayerStatsState, {
   hp: 'int32',
@@ -38,6 +39,7 @@ defineTypes(PlayerStatsState, {
   level: 'int16',
   xp: 'int32',
   xpToNext: 'int32',
+  skillPoints: 'int16',
 });
 
 export class PlayerState extends Schema {

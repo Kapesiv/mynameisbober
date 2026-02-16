@@ -65,6 +65,16 @@ export async function initDB(): Promise<Database> {
   `);
 
   db.run(`
+    CREATE TABLE IF NOT EXISTS skill_hotbar (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      player_id TEXT NOT NULL REFERENCES players(id),
+      slot INTEGER NOT NULL,
+      skill_id TEXT NOT NULL,
+      UNIQUE(player_id, slot)
+    )
+  `);
+
+  db.run(`
     CREATE TABLE IF NOT EXISTS dungeon_progress (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       player_id TEXT NOT NULL REFERENCES players(id),
@@ -78,6 +88,7 @@ export async function initDB(): Promise<Database> {
   // Migrations for existing DBs
   try { db.run('ALTER TABLE players ADD COLUMN gold INTEGER NOT NULL DEFAULT 100'); } catch (_) {}
   try { db.run('ALTER TABLE items ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1'); } catch (_) {}
+  try { db.run('ALTER TABLE players ADD COLUMN skill_points INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
 
   saveDB();
   return db;

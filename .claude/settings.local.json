@@ -33,7 +33,14 @@
       "Bash(/c/Users/kappu/gh-cli/bin/gh.exe:*)",
       "Bash(npx:*)",
       "Bash(taskkill:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(node -e:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(node:*)",
+      "Bash(xargs:*)"
     ]
   }
 }

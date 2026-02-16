@@ -26,3 +26,8 @@ export interface SkillAllocation {
   nodeId: string;
   points: number;
 }
+
+export interface HotbarSlot {
+  slot: number;
+  skillId: string;
+}

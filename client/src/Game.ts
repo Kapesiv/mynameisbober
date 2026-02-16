@@ -9,12 +9,16 @@ import { RemotePlayer } from './entities/RemotePlayer.js';
 import { MonsterEntity } from './entities/Monster.js';
 import { LootDropEntity } from './entities/LootDrop.js';
 import { HubWorld } from './world/HubWorld.js';
+import { DungeonWorld } from './world/DungeonWorld.js';
 import { mountHUD, type HUDState } from './ui/HUD.js';
 import { mountNPCDialog, showNPCDialog, hideNPCDialog } from './ui/NPCDialog.js';
 import { mountMiniMap, type MinimapData } from './ui/MiniMap.js';
 import { mountShopPanel, showShopPanel, hideShopPanel } from './ui/ShopPanel.js';
 import { mountInventoryPanel, toggleInventoryPanel, hideInventoryPanel } from './ui/InventoryPanel.js';
 import { mountSettingsMenu, showSettings, hideSettings, isSettingsOpen } from './ui/SettingsMenu.js';
+import { mountFloorHUD, type FloorInfo } from './ui/FloorHUD.js';
+import { mountFloorClearedPanel, showFloorCleared, showDungeonComplete, hideFloorClearedPanel } from './ui/FloorClearedPanel.js';
+import { mountLevelUpEffect, showLevelUp } from './ui/LevelUpEffect.js';
 import { MusicSystem } from './systems/MusicSystem.js';
 import { inventoryManager } from './systems/InventoryManager.js';
 import { setNetworkManager } from './network/actions.js';
@@ -33,6 +37,8 @@ export class Game {
   private lootDrops = new Map<string, LootDropEntity>();
 
   private hubWorld: HubWorld | null = null;
+  private dungeonWorld: DungeonWorld | null = null;
+  private hubFog: THREE.FogExp2 | null = null;
   private music = new MusicSystem();
 
   private clock = new THREE.Clock();
@@ -53,6 +59,8 @@ export class Game {
   private isMoving = false;
   private paused = false;
   private canvas: HTMLCanvasElement;
+  private floorInfo: FloorInfo | null = null;
+  private floorClearedShowing = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -79,6 +87,20 @@ export class Game {
       },
       onResume: () => this.unpause(),
     });
+    mountFloorHUD(uiOverlay, () => this.floorInfo);
+    mountFloorClearedPanel(uiOverlay, {
+      onContinue: () => {
+        this.network.sendMessage('next_floor', {});
+        hideFloorClearedPanel();
+        this.floorClearedShowing = false;
+      },
+      onExit: () => {
+        this.network.sendMessage('exit_dungeon', {});
+        hideFloorClearedPanel();
+        this.floorClearedShowing = false;
+      },
+    });
+    mountLevelUpEffect(uiOverlay);
 
     // ESC to close panels / toggle pause
     window.addEventListener('keydown', (e) => {
@@ -145,8 +167,10 @@ export class Game {
   private setupRoomListeners(room: any) {
     room.state.players.onAdd((player: any, sessionId: string) => {
       if (sessionId === this.network.getSessionId()) return;
-      const remote = new RemotePlayer(this.sceneManager.scene, sessionId, player.name);
-      remote.targetPosition.set(player.position.x, player.position.y, player.position.z);
+      const remote = new RemotePlayer(
+        this.sceneManager.scene, sessionId, player.name,
+        player.position.x, player.position.y, player.position.z,
+      );
       this.remotePlayers.set(sessionId, remote);
 
       player.position.onChange(() => {
@@ -224,6 +248,29 @@ export class Game {
       this.hubWorld.group.visible = roomType === 'hub';
     }
 
+    // Dungeon world lifecycle & fog
+    if (roomType === 'dungeon') {
+      // Save hub fog so we can restore later
+      if (!this.hubFog && this.sceneManager.scene.fog instanceof THREE.FogExp2) {
+        this.hubFog = this.sceneManager.scene.fog;
+      }
+      // Create dungeon environment
+      if (!this.dungeonWorld) {
+        this.dungeonWorld = new DungeonWorld(this.sceneManager.scene);
+      }
+      this.sceneManager.scene.fog = new THREE.FogExp2(0x0a1a0a, 0.035);
+    } else {
+      // Dispose dungeon environment
+      if (this.dungeonWorld) {
+        this.dungeonWorld.dispose(this.sceneManager.scene);
+        this.dungeonWorld = null;
+      }
+      // Restore hub fog
+      if (this.hubFog) {
+        this.sceneManager.scene.fog = this.hubFog;
+      }
+    }
+
     const room = await this.network.joinRoom(roomType, { ...options, name: this.playerName });
     this.setupRoomListeners(room);
 
@@ -234,6 +281,13 @@ export class Game {
     this.currentRoom = roomType;
     this.portalCooldown = 1;
 
+    // Reset floor UI when switching rooms
+    if (roomType === 'hub') {
+      this.floorInfo = null;
+      this.floorClearedShowing = false;
+      hideFloorClearedPanel();
+    }
+
     // Switch music
     if (roomType === 'hub') this.music.playHub();
     else this.music.playDungeon();
@@ -243,9 +297,8 @@ export class Game {
     if (type === 'damage') {
       // TODO: floating damage text
     } else if (type === 'level_up') {
-      console.log(`Level up! Now level ${data.level}`);
+      showLevelUp(data.level);
     } else if (type === 'loot_acquired') {
-      // data.item is full ItemInstance from server
       if (data.item) {
         inventoryManager.addItem(data.item);
         console.log(`Picked up: ${data.item.defId} (${data.item.rarity})`);
@@ -268,6 +321,30 @@ export class Game {
       inventoryManager.setGold(data.gold);
     } else if (type === 'shop_sell_fail') {
       console.log(`Shop sell failed: ${data.error}`);
+    } else if (type === 'floor_started') {
+      this.floorInfo = {
+        currentFloor: data.floor,
+        totalFloors: data.totalFloors,
+        floorName: data.floorName,
+      };
+      hideFloorClearedPanel();
+      this.floorClearedShowing = false;
+      // Update dungeon visuals per floor
+      if (this.dungeonWorld) {
+        this.dungeonWorld.setFloor(data.floor, data.totalFloors, data.floorName, !!data.isBossFloor);
+      }
+      // Teleport local player to match server
+      if (this.localPlayer) {
+        this.localPlayer.position.set(0, 0, -8);
+      }
+    } else if (type === 'floor_cleared') {
+      showFloorCleared(data.floor, data.totalFloors);
+      this.floorClearedShowing = true;
+    } else if (type === 'dungeon_complete') {
+      showDungeonComplete();
+      this.floorClearedShowing = true;
+    } else if (type === 'return_to_hub') {
+      this.switchRoom('hub');
     }
   }
 
@@ -303,15 +380,16 @@ export class Game {
     const mouse = this.input.consumeMouse();
     this.camera.onMouseMove(mouse.dx, mouse.dy);
 
-    // Input
+    // Check movement state every frame (for smooth animations)
+    this.isMoving = this.input.isMoving();
+
+    // Input (sent at fixed rate, but animations run every frame)
     this.inputTimer += dt;
     if (this.inputTimer >= this.inputInterval && this.localPlayer) {
       this.inputTimer = 0;
       const input = this.input.getInput(this.camera.getYaw(), this.inputInterval);
       this.localPlayer.applyInput(input);
       this.network.sendInput(input);
-
-      this.isMoving = input.forward || input.backward || input.left || input.right;
     }
 
     // Reconcile
@@ -352,9 +430,12 @@ export class Game {
       this.camera.update(this.localPlayer.position, dt);
     }
 
-    // Hub world animations
+    // World animations
     if (this.hubWorld && this.currentRoom === 'hub') {
       this.hubWorld.update(this.elapsedTime, this.localPlayer?.position);
+    }
+    if (this.dungeonWorld && this.currentRoom === 'dungeon') {
+      this.dungeonWorld.update(this.elapsedTime);
     }
 
     // Interaction checks
@@ -368,7 +449,7 @@ export class Game {
     if (this.currentRoom === 'hub' && this.hubWorld) {
       // Portal: E to enter
       if (this.input.isKey('KeyE') && this.portalCooldown <= 0) {
-        const portalDist = pos.distanceTo(this.hubWorld.forestPortalPosition);
+        const portalDist = pos.distanceTo(this.hubWorld.cavePosition);
         if (portalDist < 4) {
           this.switchRoom('dungeon', { dungeonId: 'forest' });
           return;
@@ -393,6 +474,9 @@ export class Game {
     }
 
     if (this.currentRoom === 'dungeon') {
+      // Don't process gameplay input while floor cleared panel is up
+      if (this.floorClearedShowing) return;
+
       // F to pick up loot
       if (this.input.isKey('KeyF')) {
         let closestId: string | null = null;
@@ -409,9 +493,9 @@ export class Game {
         }
       }
 
-      // ESC or portal back to hub (for now, walk to edge)
+      // Q to exit dungeon (saves stats, returns to hub)
       if (this.input.isKey('KeyQ') && this.portalCooldown <= 0) {
-        this.switchRoom('hub');
+        this.network.sendMessage('exit_dungeon', {});
       }
     }
   }

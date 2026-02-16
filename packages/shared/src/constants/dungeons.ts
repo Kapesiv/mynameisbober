@@ -54,6 +54,7 @@ export const FOREST_DUNGEON: DungeonDef = {
   rooms: [
     {
       id: 'forest_entrance',
+      floorName: 'Entrance',
       spawns: [
         { monsterId: 'forest_wolf', position: { x: 5, y: 0, z: 5 }, respawnTime: 30 },
         { monsterId: 'forest_wolf', position: { x: -5, y: 0, z: 8 }, respawnTime: 30 },
@@ -62,6 +63,7 @@ export const FOREST_DUNGEON: DungeonDef = {
     },
     {
       id: 'forest_clearing',
+      floorName: 'Clearing',
       spawns: [
         { monsterId: 'forest_spider', position: { x: 3, y: 0, z: 0 }, respawnTime: 30 },
         { monsterId: 'forest_spider', position: { x: -3, y: 0, z: 2 }, respawnTime: 30 },
@@ -71,6 +73,7 @@ export const FOREST_DUNGEON: DungeonDef = {
     },
     {
       id: 'forest_depths',
+      floorName: 'Depths',
       spawns: [
         { monsterId: 'forest_spider', position: { x: 4, y: 0, z: 4 }, respawnTime: 45 },
         { monsterId: 'forest_wolf', position: { x: -4, y: 0, z: 4 }, respawnTime: 45 },
@@ -80,6 +83,7 @@ export const FOREST_DUNGEON: DungeonDef = {
     },
     {
       id: 'forest_boss',
+      floorName: 'Boss Lair',
       spawns: [
         { monsterId: 'forest_treant', position: { x: 0, y: 0, z: 0 }, respawnTime: 0 },
       ],

@@ -24,6 +24,13 @@ export const XP_EXPONENT = 1.5;
 // Inventory
 export const INVENTORY_MAX_SLOTS = 30;
 
+// Skills
+export const SKILL_POINTS_PER_LEVEL = 1;
+export const MAX_HOTBAR_SLOTS = 4;
+export const MANA_REGEN_RATE = 2; // per second
+export const SKILL_RANGE_AOE = 4.0;
+export const CHARGE_DISTANCE = 6.0;
+
 // Rarity weights for bonus stats
 export const RARITY_BONUS_STATS: Record<string, { min: number; max: number }> = {
   common: { min: 0, max: 0 },

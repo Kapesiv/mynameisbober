@@ -1,6 +1,6 @@
 import { Room, Client } from '@colyseus/core';
 import { HubState } from '../state/GameState.js';
-import { PlayerState, Vec3State } from '../state/PlayerState.js';
+import { PlayerState, Vec3State, PlayerStatsState } from '../state/PlayerState.js';
 import { computeMovement, validatePlayerInput, HUB_MAX_PLAYERS, HUB_SYNC_RATE, type PlayerInput } from '@saab/shared';
 import { InventoryService } from '../services/InventoryService.js';
 
@@ -66,6 +66,45 @@ export class HubRoom extends Room<HubState> {
       client.send('inventory_full', { items, gold });
     });
 
+    this.onMessage('allocate_skill', (client: Client, data: { nodeId: string }) => {
+      if (!data || typeof data.nodeId !== 'string') return;
+      const result = this.inventory.allocateSkillPoint(client.sessionId, data.nodeId);
+      if (result.error) {
+        client.send('skill_fail', { error: result.error });
+      } else {
+        client.send('skills_updated', {
+          allocations: result.allocations,
+          skillPoints: result.skillPoints,
+        });
+        // Re-apply passive stats
+        const player = this.state.players.get(client.sessionId);
+        if (player) {
+          const passive = this.inventory.computePassiveStats(client.sessionId);
+          const saved = this.inventory.loadPlayerStats(client.sessionId);
+          const baseMaxHp = 100 + (saved.level - 1) * 10;
+          player.stats.maxHp = Math.floor(baseMaxHp * passive.maxHpMult);
+          player.stats.hp = Math.min(player.stats.hp, player.stats.maxHp);
+        }
+      }
+    });
+
+    this.onMessage('set_hotbar', (client: Client, data: { slot: number; skillId: string }) => {
+      if (!data || typeof data.slot !== 'number' || typeof data.skillId !== 'string') return;
+      const result = this.inventory.setHotbarSlot(client.sessionId, data.slot, data.skillId);
+      if (result.error) {
+        client.send('skill_fail', { error: result.error });
+      } else {
+        client.send('hotbar_updated', { hotbar: result.hotbar });
+      }
+    });
+
+    this.onMessage('request_skills', (client: Client) => {
+      const allocations = this.inventory.loadSkillAllocations(client.sessionId);
+      const hotbar = this.inventory.loadHotbar(client.sessionId);
+      const skillPoints = this.inventory.getSkillPoints(client.sessionId);
+      client.send('skills_full', { allocations, hotbar, skillPoints });
+    });
+
     console.log('HubRoom created');
   }
 
@@ -81,12 +120,42 @@ export class HubRoom extends Room<HubState> {
     player.position = new Vec3State();
     player.position.x = Math.random() * 10 - 5;
     player.position.z = Math.random() * 10 - 5;
+
+    // Load persisted stats from DB
+    const stats = new PlayerStatsState();
+    const saved = this.inventory.loadPlayerStats(client.sessionId);
+    stats.level = saved.level;
+    stats.xp = saved.xp;
+    stats.xpToNext = Math.floor(100 * Math.pow(saved.level, 1.5));
+    stats.strength = saved.strength;
+    stats.intelligence = saved.intelligence;
+    stats.dexterity = saved.dexterity;
+    stats.vitality = saved.vitality;
+    // Apply passive bonuses
+    const passive = this.inventory.computePassiveStats(client.sessionId);
+    const baseMaxHp = 100 + (saved.level - 1) * 10;
+    stats.maxHp = Math.floor(baseMaxHp * passive.maxHpMult);
+    stats.hp = stats.maxHp;
+    stats.maxMana = 50 + (saved.level - 1) * 5;
+    stats.mana = stats.maxMana;
+    stats.skillPoints = this.inventory.getSkillPoints(client.sessionId);
+    player.stats = stats;
+
     this.state.players.set(client.sessionId, player);
 
     // Send full inventory
     const items = this.inventory.getItems(client.sessionId);
     const gold = this.inventory.getGold(client.sessionId);
     client.send('inventory_full', { items, gold });
+
+    // Send full skill data
+    const allocations = this.inventory.loadSkillAllocations(client.sessionId);
+    const hotbar = this.inventory.loadHotbar(client.sessionId);
+    client.send('skills_full', {
+      allocations,
+      hotbar,
+      skillPoints: stats.skillPoints,
+    });
 
     console.log(`${player.name} joined Hub`);
   }

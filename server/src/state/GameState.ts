@@ -34,6 +34,10 @@ export class DungeonState extends Schema {
   lootDrops = new MapSchema<LootDropState>();
   dungeonId: string = '';
   currentRoom: string = '';
+  currentFloor: number = 0;
+  totalFloors: number = 4;
+  floorCleared: boolean = false;
+  dungeonComplete: boolean = false;
 }
 defineTypes(DungeonState, {
   players: { map: PlayerState },
@@ -41,4 +45,8 @@ defineTypes(DungeonState, {
   lootDrops: { map: LootDropState },
   dungeonId: 'string',
   currentRoom: 'string',
+  currentFloor: 'uint8',
+  totalFloors: 'uint8',
+  floorCleared: 'boolean',
+  dungeonComplete: 'boolean',
 });
