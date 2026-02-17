@@ -307,15 +307,17 @@ export class Game {
     const mouse = this.input.consumeMouse();
     this.camera.onMouseMove(mouse.dx, mouse.dy);
 
-    // Input
+    // Check movement state every frame for smooth animation blending
+    this.isMoving = this.input.isKey('KeyW') || this.input.isKey('KeyS') ||
+                    this.input.isKey('KeyA') || this.input.isKey('KeyD');
+
+    // Input (applied + sent at fixed rate for network consistency)
     this.inputTimer += dt;
     if (this.inputTimer >= this.inputInterval && this.localPlayer) {
       this.inputTimer = 0;
       const input = this.input.getInput(this.camera.getYaw(), this.inputInterval);
       this.localPlayer.applyInput(input);
       this.network.sendInput(input);
-
-      this.isMoving = input.forward || input.backward || input.left || input.right;
     }
 
     // Reconcile

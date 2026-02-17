@@ -23,6 +23,10 @@ export class LocalPlayer {
   private spawnGlow: THREE.Mesh | null = null;
   private spawnTimer = 2.0; // spawn effect duration
 
+  // Smoothing state
+  private displayRotation = 0;
+  private moveBlend = 0;
+
   // Cloth simulation geometry refs
   private tunicGeo: THREE.BufferGeometry | null = null;
   private tunicOrigPos: Float32Array | null = null;
@@ -220,28 +224,35 @@ export class LocalPlayer {
   }
 
   update(dt: number, time: number, isMoving: boolean) {
-    this.mesh.position.copy(this.position);
-    this.mesh.rotation.y = this.rotation;
+    // Smooth mesh position toward logical position (eliminates 20Hz stutter)
+    const posLerp = Math.min(1, 30 * dt);
+    this.mesh.position.x += (this.position.x - this.mesh.position.x) * posLerp;
+    this.mesh.position.y += (this.position.y - this.mesh.position.y) * posLerp;
+    this.mesh.position.z += (this.position.z - this.mesh.position.z) * posLerp;
+
+    // Smooth rotation with angle wrapping
+    let rotDiff = this.rotation - this.displayRotation;
+    while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
+    while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
+    this.displayRotation += rotDiff * Math.min(1, 14 * dt);
+    this.mesh.rotation.y = this.displayRotation;
+
+    // Smooth animation blend between idle and walk
+    const targetBlend = isMoving ? 1 : 0;
+    this.moveBlend += (targetBlend - this.moveBlend) * Math.min(1, 10 * dt);
 
     const leftLeg = this.mesh.getObjectByName('leftLeg');
     const rightLeg = this.mesh.getObjectByName('rightLeg');
     const leftArm = this.mesh.getObjectByName('leftArm');
     const rightArm = this.mesh.getObjectByName('rightArm');
 
-    if (isMoving) {
-      const swing = Math.sin(time * 10) * 0.5;
-      if (leftLeg) leftLeg.rotation.x = swing;
-      if (rightLeg) rightLeg.rotation.x = -swing;
-      if (leftArm) leftArm.rotation.x = -swing * 0.5;
-      if (rightArm) rightArm.rotation.x = swing * 0.5;
-    } else {
-      // Idle breathing
-      const breathe = Math.sin(time * 2) * 0.02;
-      if (leftLeg) leftLeg.rotation.x = 0;
-      if (rightLeg) rightLeg.rotation.x = 0;
-      if (leftArm) leftArm.rotation.x = breathe;
-      if (rightArm) rightArm.rotation.x = -breathe;
-    }
+    // Blended walk swing + idle breathing
+    const swing = Math.sin(time * 10) * 0.5 * this.moveBlend;
+    const breathe = Math.sin(time * 2) * 0.02 * (1 - this.moveBlend);
+    if (leftLeg) leftLeg.rotation.x = swing;
+    if (rightLeg) rightLeg.rotation.x = -swing;
+    if (leftArm) leftArm.rotation.x = -swing * 0.5 + breathe;
+    if (rightArm) rightArm.rotation.x = swing * 0.5 - breathe;
 
     // ---- Cloth simulation ----
     const windStr = isMoving ? 0.18 : 0.025;
