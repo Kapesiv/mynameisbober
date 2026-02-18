@@ -103,11 +103,9 @@ export class Game {
       onResume: () => this.unpause(),
     });
 
-    // Apply saved settings from localStorage
+    // Apply non-audio saved settings (audio applied after music starts)
     const saved = getSavedSettings();
     this.camera.setSensitivity(saved.sensitivity);
-    if (saved.muted) this.music.mute();
-    else this.music.setVolume(saved.volume);
     mountFloorHUD(uiOverlay, () => this.floorInfo);
     mountFloorClearedPanel(uiOverlay, {
       onContinue: () => {
@@ -191,6 +189,14 @@ export class Game {
     this.setupRoomListeners(room);
     this.currentRoom = 'hub';
     this.music.playHub();
+
+    // Apply saved audio settings now that the AudioContext exists
+    const audioSettings = getSavedSettings();
+    if (audioSettings.muted) {
+      this.music.mute();
+    } else {
+      this.music.setVolume(audioSettings.volume);
+    }
 
     // Initialize post-processing after scene is set up
     this.renderer.setupPostProcessing(this.sceneManager.scene, this.camera.camera);

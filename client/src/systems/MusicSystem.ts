@@ -18,7 +18,7 @@ export class MusicSystem {
     if (this.ctx) return;
     this.ctx = new AudioContext();
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = this.volume;
+    this.masterGain.gain.value = this._muted ? 0 : this.volume;
     this.masterGain.connect(this.ctx.destination);
   }
 
