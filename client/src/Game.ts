@@ -16,7 +16,7 @@ import { mountNPCDialog, showNPCDialog, hideNPCDialog } from './ui/NPCDialog.js'
 import { mountMiniMap, type MinimapData } from './ui/MiniMap.js';
 import { mountShopPanel, showShopPanel, hideShopPanel } from './ui/ShopPanel.js';
 import { mountInventoryPanel, toggleInventoryPanel, hideInventoryPanel } from './ui/InventoryPanel.js';
-import { mountSettingsMenu, showSettings, hideSettings, isSettingsOpen } from './ui/SettingsMenu.js';
+import { mountSettingsMenu, showSettings, hideSettings, isSettingsOpen, getSavedSettings } from './ui/SettingsMenu.js';
 import { mountFloorHUD, type FloorInfo } from './ui/FloorHUD.js';
 import { mountFloorClearedPanel, showFloorCleared, showDungeonComplete, hideFloorClearedPanel } from './ui/FloorClearedPanel.js';
 import { mountLevelUpEffect, showLevelUp } from './ui/LevelUpEffect.js';
@@ -94,8 +94,20 @@ export class Game {
         if (muted) this.music.mute();
         else this.music.unmute();
       },
+      onVolumeChange: (volume) => {
+        this.music.setVolume(volume);
+      },
+      onSensitivityChange: (sensitivity) => {
+        this.camera.setSensitivity(sensitivity);
+      },
       onResume: () => this.unpause(),
     });
+
+    // Apply saved settings from localStorage
+    const saved = getSavedSettings();
+    this.camera.setSensitivity(saved.sensitivity);
+    if (saved.muted) this.music.mute();
+    else this.music.setVolume(saved.volume);
     mountFloorHUD(uiOverlay, () => this.floorInfo);
     mountFloorClearedPanel(uiOverlay, {
       onContinue: () => {

@@ -16,6 +16,8 @@ export class CameraController {
   private freePitchMin = -0.6;
   private freePitchMax = 1.2;
 
+  private sensitivity = 0.003;
+
   private currentPos = new THREE.Vector3();
   private currentLookAt = new THREE.Vector3();
   private smoothSpeed = 8;
@@ -39,10 +41,14 @@ export class CameraController {
     });
   }
 
+  setSensitivity(value: number) {
+    this.sensitivity = value;
+  }
+
   onMouseMove(dx: number, dy: number) {
-    this.yaw -= dx * 0.003;
+    this.yaw -= dx * this.sensitivity;
     if (this.freeLook) {
-      this.pitch -= dy * 0.003;
+      this.pitch -= dy * this.sensitivity;
       this.pitch = Math.max(this.freePitchMin, Math.min(this.freePitchMax, this.pitch));
     }
     // Locked mode: pitch stays fixed
