@@ -34,7 +34,7 @@ async function main() {
   // Required for SharedArrayBuffer (WASM ONNX TTS worker)
   fastify.addHook('onSend', async (_request, reply) => {
     reply.header('Cross-Origin-Opener-Policy', 'same-origin');
-    reply.header('Cross-Origin-Embedder-Policy', 'require-corp');
+    reply.header('Cross-Origin-Embedder-Policy', 'credentialless');
   });
 
   // Serve client build in production
