@@ -74,6 +74,7 @@ export class InputManager {
       if (code === 'KeyS' && t.backward) return true;
       if (code === 'KeyA' && t.left) return true;
       if (code === 'KeyD' && t.right) return true;
+      if (code === 'KeyE' && t.interact) return true;
     }
     return false;
   }

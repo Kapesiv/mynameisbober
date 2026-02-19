@@ -7,6 +7,7 @@ export interface TouchInput {
   force: number;
   sprint: boolean;
   crouch: boolean;
+  interact: boolean;
 }
 
 export class MobileTouchControls {
@@ -14,6 +15,7 @@ export class MobileTouchControls {
   private joystickBase: HTMLElement;
   private joystickThumb: HTMLElement;
   private attackButton: HTMLElement;
+  private interactButton: HTMLElement;
   private sprintButton: HTMLElement;
   private crouchButton: HTMLElement;
 
@@ -27,6 +29,7 @@ export class MobileTouchControls {
 
   private sprintActive = false;
   private crouchActive = false;
+  private interactPressed = false;
 
   private currentInput: TouchInput = {
     forward: false,
@@ -37,6 +40,7 @@ export class MobileTouchControls {
     force: 0,
     sprint: false,
     crouch: false,
+    interact: false,
   };
 
   public onAttack: (() => void) | null = null;
@@ -48,6 +52,7 @@ export class MobileTouchControls {
     this.joystickBase = this.createJoystickBase();
     this.joystickThumb = this.createJoystickThumb();
     this.attackButton = this.createAttackButton();
+    this.interactButton = this.createInteractButton();
     this.sprintButton = this.createSprintButton();
     this.crouchButton = this.createCrouchButton();
 
@@ -62,6 +67,7 @@ export class MobileTouchControls {
       align-items: center;
       gap: 12px;
     `;
+    rightColumn.appendChild(this.interactButton);
     rightColumn.appendChild(this.attackButton);
     const bottomRow = document.createElement('div');
     bottomRow.style.cssText = `display: flex; gap: 12px;`;
@@ -184,6 +190,38 @@ export class MobileTouchControls {
     return el;
   }
 
+  private createInteractButton(): HTMLElement {
+    const el = document.createElement('div');
+    el.id = 'interact-button';
+    el.style.cssText = `
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%,
+        rgba(60, 180, 100, 0.85),
+        rgba(30, 120, 60, 0.7));
+      border: 2px solid rgba(100, 255, 150, 0.3);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      touch-action: none;
+      box-shadow:
+        0 0 25px rgba(60, 180, 100, 0.2),
+        inset 0 0 15px rgba(255, 255, 255, 0.05);
+      font-family: serif;
+      font-size: 18px;
+      font-weight: bold;
+      color: rgba(220, 255, 230, 0.9);
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    `;
+    el.textContent = 'E';
+    return el;
+  }
+
   private createSprintButton(): HTMLElement {
     const el = document.createElement('div');
     el.id = 'sprint-button';
@@ -264,6 +302,26 @@ export class MobileTouchControls {
       this.attackButton.style.transform = 'scale(1)';
       this.attackButton.style.boxShadow = `
         0 0 25px rgba(180, 60, 60, 0.2),
+        inset 0 0 15px rgba(255, 255, 255, 0.05)
+      `;
+    });
+
+    // Interact (E key equivalent) - press and release
+    this.interactButton.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      this.interactPressed = true;
+      this.interactButton.style.transform = 'scale(0.9)';
+      this.interactButton.style.boxShadow = `
+        0 0 35px rgba(100, 255, 150, 0.4),
+        inset 0 0 20px rgba(255, 255, 255, 0.1)
+      `;
+    }, { passive: false });
+
+    this.interactButton.addEventListener('touchend', () => {
+      this.interactPressed = false;
+      this.interactButton.style.transform = 'scale(1)';
+      this.interactButton.style.boxShadow = `
+        0 0 25px rgba(60, 180, 100, 0.2),
         inset 0 0 15px rgba(255, 255, 255, 0.05)
       `;
     });
@@ -374,6 +432,7 @@ export class MobileTouchControls {
         forward: false, backward: false, left: false, right: false,
         angle: 0, force: 0,
         sprint: this.sprintActive, crouch: this.crouchActive,
+        interact: this.interactPressed,
       };
       return;
     }
@@ -387,6 +446,7 @@ export class MobileTouchControls {
       angle: angle,
       force: force,
       sprint: this.sprintActive, crouch: this.crouchActive,
+      interact: this.interactPressed,
     };
   }
 
@@ -402,6 +462,7 @@ export class MobileTouchControls {
       forward: false, backward: false, left: false, right: false,
       angle: 0, force: 0,
       sprint: this.sprintActive, crouch: this.crouchActive,
+      interact: this.interactPressed,
     };
   }
 
