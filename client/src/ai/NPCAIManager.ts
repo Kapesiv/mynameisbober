@@ -54,6 +54,8 @@ export class NPCAIManager {
   /** Start loading models in background. Call early (e.g. at game start). */
   preload(): void {
     if (this.modelsLoaded || this.loadPromise) return;
+    console.log('[NPC-AI] Starting background preload...');
+    console.log('[NPC-AI] WebGPU available:', !!navigator.gpu);
     this.ensureModelsLoading();
   }
 
@@ -63,18 +65,22 @@ export class NPCAIManager {
 
     this.loadPromise = (async () => {
       try {
+        console.log('[NPC-AI] Loading LLM and TTS models...');
         await Promise.all([
           this.brain.init((progress, text) => {
             updateLLMProgress(progress, text);
+            if (progress === 1) console.log('[NPC-AI] LLM loaded');
           }),
           this.voice.init((progress, status) => {
             updateTTSProgress(progress, status);
+            if (status === 'ready' || progress === 1) console.log('[NPC-AI] TTS loaded');
           }),
         ]);
         this.modelsLoaded = true;
+        console.log('[NPC-AI] All models ready');
         return true;
       } catch (err) {
-        console.error('Failed to load AI models:', err);
+        console.error('[NPC-AI] Failed to load models:', err);
         this.loadPromise = null;
         return false;
       }
@@ -86,10 +92,16 @@ export class NPCAIManager {
   /** Returns false if models aren't ready (caller should use static dialog). */
   async interact(npcId: string): Promise<boolean> {
     const profile = NPC_PROFILES[npcId];
-    if (!profile) return false;
+    if (!profile) {
+      console.log('[NPC-AI] No profile for:', npcId);
+      return false;
+    }
 
     // If models aren't loaded yet, fall back to static dialog
-    if (!this.modelsLoaded) return false;
+    if (!this.modelsLoaded) {
+      console.log('[NPC-AI] Models not ready, falling back to static dialog');
+      return false;
+    }
 
     this.currentNpcId = npcId;
     this.activeProfile = profile;
