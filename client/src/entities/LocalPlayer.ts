@@ -4,6 +4,7 @@ import { CharacterController } from './CharacterController.js';
 import { characterLoader } from './CharacterLoader.js';
 import type { WorldCollider } from '../world/HubWorld.js';
 import { downscaleTextures } from '../utils/downscaleTextures.js';
+import { getGLTFLoader } from '../utils/getGLTFLoader.js';
 
 export type Gender = 'male' | 'female';
 
@@ -74,7 +75,7 @@ export class LocalPlayer {
 
       // Load walk animation from separate FBX file
       try {
-        const walkClips = await characterLoader.loadAnimationClips('/models/walking.fbx');
+        const walkClips = await characterLoader.loadAnimationClips('/models/walking.glb');
         for (const clip of walkClips) {
           clip.name = 'walk';
           this.stripRootDrift(clip);
@@ -85,7 +86,7 @@ export class LocalPlayer {
 
       // Load run animation from separate FBX file
       try {
-        const runClips = await characterLoader.loadAnimationClips('/models/run.fbx');
+        const runClips = await characterLoader.loadAnimationClips('/models/run.glb');
         for (const clip of runClips) {
           clip.name = 'run';
           animations.push(clip);
@@ -95,7 +96,7 @@ export class LocalPlayer {
 
       // Load attack animation from separate FBX file
       try {
-        const attackClips = await characterLoader.loadAnimationClips('/models/attack.fbx');
+        const attackClips = await characterLoader.loadAnimationClips('/models/attack.glb');
         for (const clip of attackClips) {
           clip.name = 'attack';
           animations.push(clip);
@@ -105,7 +106,7 @@ export class LocalPlayer {
 
       // Load crouch animation from separate FBX file
       try {
-        const crouchClips = await characterLoader.loadAnimationClips('/models/crouch.fbx');
+        const crouchClips = await characterLoader.loadAnimationClips('/models/crouch.glb');
         for (const clip of crouchClips) {
           clip.name = 'crouch';
           animations.push(clip);
@@ -298,8 +299,7 @@ export class LocalPlayer {
 
   private async loadWeaponGLB(weaponGroup: THREE.Group) {
     try {
-      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-      const loader = new GLTFLoader();
+      const loader = getGLTFLoader();
       loader.load('/models/viking_axe.glb', (gltf) => {
         const model = gltf.scene;
         downscaleTextures(model);
@@ -1133,7 +1133,7 @@ export class LocalPlayer {
     }
   }
 
-  update(dt: number, time: number, isMoving: boolean, cameraYaw?: number, isSprinting = false, isCrouching = false) {
+  update(dt: number, time: number, isMoving: boolean, cameraYaw?: number, isSprinting = false, isCrouching = false, isMovingBackward = false) {
     // ── Smooth visual interpolation ────────────────────────────────
     const posLerp = Math.min(1, dt * 20);
     this.visualPos.x += (this.position.x - this.visualPos.x) * posLerp;
@@ -1158,6 +1158,7 @@ export class LocalPlayer {
     } else if (isMoving && isSprinting) {
       this.controller.transitionTo('run');
     } else if (isMoving) {
+      this.controller.setWalkDirection(isMovingBackward);
       this.controller.transitionTo('walk');
     } else {
       this.controller.transitionTo('idle');

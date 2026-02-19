@@ -17,6 +17,7 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.3.0",
     "concurrently": "^9.1.0",
     "fbx2gltf": "^0.9.7-p1",
     "typescript": "^5.7.0"

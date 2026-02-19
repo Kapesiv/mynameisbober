@@ -177,7 +177,7 @@ export class Game {
     this.network.onMessage = (type, data) => this.handleMessage(type, data);
 
     // Pre-load character model
-    characterLoader.preload(['/models/player.glb', '/models/walk.glb', '/models/viking_axe.glb']);
+    characterLoader.preload(['/models/player.glb', '/models/walking.glb', '/models/run.glb', '/models/attack.glb', '/models/crouch.glb', '/models/viking_axe.glb']);
 
     // Build hub world
     this.floatingDamage = new FloatingDamageSystem(this.sceneManager.scene);
@@ -553,7 +553,8 @@ export class Game {
     // Update entities
     const sprinting = freeLook ? false : this.input.isSprinting();
     const crouching = this.input.isCrouching();
-    this.localPlayer?.update(dt, this.elapsedTime, this.isMoving, freeLook ? undefined : this.camera.getYaw(), sprinting, crouching);
+    const movingBackward = !freeLook && this.input.isKey('KeyS') && !this.input.isKey('KeyW');
+    this.localPlayer?.update(dt, this.elapsedTime, this.isMoving, freeLook ? undefined : this.camera.getYaw(), sprinting, crouching, movingBackward);
     this.remotePlayers.forEach(p => p.update(dt, this.elapsedTime));
     this.monsters.forEach(m => m.update(dt));
     this.lootDrops.forEach(l => l.update(dt));

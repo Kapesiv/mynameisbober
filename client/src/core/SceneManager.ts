@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getGLTFLoader } from '../utils/getGLTFLoader';
 
 export class SceneManager {
   public scene: THREE.Scene;
@@ -12,8 +13,8 @@ export class SceneManager {
 
   private setupSkybox() {
     // Load fantasy sky GLB
-    import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-      const loader = new GLTFLoader();
+    {
+      const loader = getGLTFLoader();
       loader.load('/models/sky.glb', (gltf) => {
         const sky = gltf.scene;
         sky.name = 'sky';
@@ -55,7 +56,7 @@ export class SceneManager {
         console.error('[SceneManager] Failed to load sky GLB, falling back to procedural:', err);
         this.setupProceduralSky();
       });
-    });
+    }
   }
 
   private setupProceduralSky() {

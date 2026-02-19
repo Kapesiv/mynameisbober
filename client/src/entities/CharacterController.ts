@@ -229,6 +229,14 @@ export class CharacterController {
     return action ? action.getClip().duration : 0;
   }
 
+  /** Set walk animation playback direction: -1 for backward, 1 for forward. */
+  setWalkDirection(backward: boolean): void {
+    const walkAction = this.getAction('walk');
+    if (walkAction) {
+      walkAction.timeScale = backward ? -1 : 1;
+    }
+  }
+
   /** Update the animation mixer. */
   update(dt: number): void {
     if (this.mixer) {

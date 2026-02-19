@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { downscaleTextures } from '../utils/downscaleTextures';
+import { getGLTFLoader } from '../utils/getGLTFLoader';
 
 /**
  * Skylanders-inspired colorful Hub Town
@@ -553,8 +554,8 @@ export class HubWorld {
 
   private buildFountainPlaza() {
     // Load tree-house GLB as center tree
-    import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-      const loader = new GLTFLoader();
+    {
+      const loader = getGLTFLoader();
       loader.load('/models/center_tree.glb', (gltf) => {
         const model = gltf.scene;
         model.name = 'tree-of-life';
@@ -591,14 +592,14 @@ export class HubWorld {
       }, undefined, (err) => {
         console.error('[HubWorld] Failed to load center tree GLB:', err);
       });
-    });
+    }
   }
 
   private buildShop() {
     const pos = this.shopPosition;
 
-    import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-      const loader = new GLTFLoader();
+    {
+      const loader = getGLTFLoader();
       loader.load('/models/shop.glb', (gltf) => {
         const model = gltf.scene;
         model.name = 'shop-stall';
@@ -637,7 +638,7 @@ export class HubWorld {
       }, undefined, (err) => {
         console.error('[HubWorld] Failed to load shop GLB:', err);
       });
-    });
+    }
   }
 
   private buildPvPArena() {
@@ -701,8 +702,8 @@ export class HubWorld {
     const cp = this.cavePosition.clone();
 
     // ── Load dragon skull GLB model ───────────────────────────────────
-    import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-      const loader = new GLTFLoader();
+    {
+      const loader = getGLTFLoader();
       loader.load('/models/dragon_skull.glb', (gltf) => {
         const model = gltf.scene;
         model.position.copy(cp);
@@ -730,7 +731,7 @@ export class HubWorld {
       }, undefined, (err) => {
         console.error('[HubWorld] Failed to load dragon skull GLB:', err);
       });
-    });
+    }
 
     // ── Atmosphere effects (kept from original) ───────────────────────
 
@@ -747,8 +748,8 @@ export class HubWorld {
       this.group.add(eyeGlow);
 
       // Load eyeball GLB
-      import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-        const loader = new GLTFLoader();
+      {
+        const loader = getGLTFLoader();
         loader.load('/models/dragon_eye.glb', (gltf) => {
           const eye = gltf.scene;
           downscaleTextures(eye);
@@ -768,7 +769,7 @@ export class HubWorld {
           eye.userData.side = side;
           this.group.add(eye);
         });
-      });
+      }
     }
 
     // Mist planes — eerie green mist
@@ -973,8 +974,8 @@ export class HubWorld {
     this.group.add(g);
 
     // Load GLB model
-    import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-      const loader = new GLTFLoader();
+    {
+      const loader = getGLTFLoader();
       loader.load('/models/old_man_character_concept_meshy.glb', (gltf) => {
         const model = gltf.scene;
         // Strip environment spheres (huge meshes baked in by Meshy/Blender)
@@ -993,7 +994,7 @@ export class HubWorld {
         g.add(model);
         console.log(`[HubWorld] Gernal GLB loaded, scale: ${scale.toFixed(2)}`);
       }, undefined, (err) => { console.error('[HubWorld] Failed to load Gernal GLB:', err); });
-    });
+    }
     return; // Skip old procedural mesh below
 
     const skinMat = new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.75 });
@@ -1558,8 +1559,8 @@ export class HubWorld {
     this.group.add(npcGroup);
 
     // Load GLB model
-    import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-      const loader = new GLTFLoader();
+    {
+      const loader = getGLTFLoader();
       loader.load('/models/elder_moonseer.glb', (gltf) => {
         const model = gltf.scene;
         // Strip environment spheres (huge meshes baked in by Meshy/Blender)
@@ -1588,7 +1589,7 @@ export class HubWorld {
       }, undefined, (err) => {
         console.error('[HubWorld] Failed to load Elder Mika GLB:', err);
       });
-    });
+    }
   }
 
   private createScoutMesh(name: string, pos: THREE.Vector3) {
@@ -1621,8 +1622,8 @@ export class HubWorld {
     this.group.add(npcGroup);
 
     // Load GLB model
-    import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-      const loader = new GLTFLoader();
+    {
+      const loader = getGLTFLoader();
       loader.load('/models/scout_aino.glb', (gltf) => {
         const model = gltf.scene;
         model.traverse((child) => {
@@ -1660,7 +1661,7 @@ export class HubWorld {
       }, undefined, (err) => {
         console.error('[HubWorld] Failed to load Scout Aino GLB:', err);
       });
-    });
+    }
   }
 
   private createBattlemasterMesh(name: string, pos: THREE.Vector3) {
@@ -1693,8 +1694,8 @@ export class HubWorld {
     this.group.add(npcGroup);
 
     // Load GLB model
-    import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-      const loader = new GLTFLoader();
+    {
+      const loader = getGLTFLoader();
       loader.load('/models/knight_artorias.glb', (gltf) => {
         const model = gltf.scene;
         model.traverse((child) => {
@@ -1721,7 +1722,7 @@ export class HubWorld {
       }, undefined, (err) => {
         console.error('[HubWorld] Failed to load Battlemaster Toivo GLB:', err);
       });
-    });
+    }
   }
 
   private buildSpawnAltar() {
@@ -1976,8 +1977,8 @@ export class HubWorld {
     if (this.pilarCache) { cb(this.pilarCache); return; }
     this.pilarPending.push(cb);
     if (this.pilarPending.length > 1) return; // already loading
-    import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-      const loader = new GLTFLoader();
+    {
+      const loader = getGLTFLoader();
       loader.load('/models/pilar.glb', (gltf) => {
         const base = gltf.scene;
         downscaleTextures(base);
@@ -1991,7 +1992,7 @@ export class HubWorld {
         for (const fn of this.pilarPending) fn(this.pilarCache);
         this.pilarPending = [];
       });
-    });
+    }
   }
 
   private createLantern(x: number, z: number) {
