@@ -5,6 +5,8 @@ export interface TouchInput {
   right: boolean;
   angle: number;
   force: number;
+  sprint: boolean;
+  crouch: boolean;
 }
 
 export class MobileTouchControls {
@@ -12,6 +14,8 @@ export class MobileTouchControls {
   private joystickBase: HTMLElement;
   private joystickThumb: HTMLElement;
   private attackButton: HTMLElement;
+  private sprintButton: HTMLElement;
+  private crouchButton: HTMLElement;
 
   private isTouchDevice: boolean;
   private activeTouch: number | null = null;
@@ -21,6 +25,9 @@ export class MobileTouchControls {
   private thumbY: number = 0;
   private maxRadius: number = 50;
 
+  private sprintActive = false;
+  private crouchActive = false;
+
   private currentInput: TouchInput = {
     forward: false,
     backward: false,
@@ -28,6 +35,8 @@ export class MobileTouchControls {
     right: false,
     angle: 0,
     force: 0,
+    sprint: false,
+    crouch: false,
   };
 
   public onAttack: (() => void) | null = null;
@@ -39,10 +48,27 @@ export class MobileTouchControls {
     this.joystickBase = this.createJoystickBase();
     this.joystickThumb = this.createJoystickThumb();
     this.attackButton = this.createAttackButton();
+    this.sprintButton = this.createSprintButton();
+    this.crouchButton = this.createCrouchButton();
 
     this.joystickBase.appendChild(this.joystickThumb);
     this.container.appendChild(this.joystickBase);
-    this.container.appendChild(this.attackButton);
+
+    // Right side: buttons column (attack on top, sprint and crouch below)
+    const rightColumn = document.createElement('div');
+    rightColumn.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    `;
+    rightColumn.appendChild(this.attackButton);
+    const bottomRow = document.createElement('div');
+    bottomRow.style.cssText = `display: flex; gap: 12px;`;
+    bottomRow.appendChild(this.sprintButton);
+    bottomRow.appendChild(this.crouchButton);
+    rightColumn.appendChild(bottomRow);
+    this.container.appendChild(rightColumn);
 
     if (this.isTouchDevice) {
       document.body.appendChild(this.container);
@@ -158,6 +184,66 @@ export class MobileTouchControls {
     return el;
   }
 
+  private createSprintButton(): HTMLElement {
+    const el = document.createElement('div');
+    el.id = 'sprint-button';
+    el.style.cssText = `
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%,
+        rgba(60, 140, 180, 0.85),
+        rgba(30, 90, 120, 0.7));
+      border: 2px solid rgba(100, 200, 255, 0.3);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      touch-action: none;
+      box-shadow:
+        0 0 25px rgba(60, 140, 180, 0.2),
+        inset 0 0 15px rgba(255, 255, 255, 0.05);
+      font-size: 20px;
+      color: rgba(200, 230, 255, 0.9);
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    `;
+    el.textContent = '\u{1F3C3}';
+    return el;
+  }
+
+  private createCrouchButton(): HTMLElement {
+    const el = document.createElement('div');
+    el.id = 'crouch-button';
+    el.style.cssText = `
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%,
+        rgba(140, 120, 60, 0.85),
+        rgba(90, 75, 30, 0.7));
+      border: 2px solid rgba(200, 180, 100, 0.3);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      touch-action: none;
+      box-shadow:
+        0 0 25px rgba(140, 120, 60, 0.2),
+        inset 0 0 15px rgba(255, 255, 255, 0.05);
+      font-size: 20px;
+      color: rgba(255, 230, 180, 0.9);
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    `;
+    el.textContent = '\u{1F9CE}';
+    return el;
+  }
+
   private bindEvents(): void {
     this.joystickBase.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
     document.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
@@ -182,10 +268,43 @@ export class MobileTouchControls {
       `;
     });
 
+    // Sprint toggle
+    this.sprintButton.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      this.sprintActive = !this.sprintActive;
+      // Sprinting and crouching are mutually exclusive
+      if (this.sprintActive) this.crouchActive = false;
+      this.updateToggleStyles();
+    }, { passive: false });
+
+    // Crouch toggle
+    this.crouchButton.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      this.crouchActive = !this.crouchActive;
+      if (this.crouchActive) this.sprintActive = false;
+      this.updateToggleStyles();
+    }, { passive: false });
+
     window.addEventListener('resize', () => {
       this.isTouchDevice = this.detectTouch();
       this.container.style.display = this.isTouchDevice ? 'flex' : 'none';
     });
+  }
+
+  private updateToggleStyles(): void {
+    this.sprintButton.style.background = this.sprintActive
+      ? 'radial-gradient(circle at 40% 35%, rgba(100, 200, 255, 0.95), rgba(60, 140, 180, 0.85))'
+      : 'radial-gradient(circle at 40% 35%, rgba(60, 140, 180, 0.85), rgba(30, 90, 120, 0.7))';
+    this.sprintButton.style.borderColor = this.sprintActive
+      ? 'rgba(100, 200, 255, 0.7)' : 'rgba(100, 200, 255, 0.3)';
+    this.sprintButton.style.transform = this.sprintActive ? 'scale(1.1)' : 'scale(1)';
+
+    this.crouchButton.style.background = this.crouchActive
+      ? 'radial-gradient(circle at 40% 35%, rgba(200, 180, 100, 0.95), rgba(140, 120, 60, 0.85))'
+      : 'radial-gradient(circle at 40% 35%, rgba(140, 120, 60, 0.85), rgba(90, 75, 30, 0.7))';
+    this.crouchButton.style.borderColor = this.crouchActive
+      ? 'rgba(200, 180, 100, 0.7)' : 'rgba(200, 180, 100, 0.3)';
+    this.crouchButton.style.transform = this.crouchActive ? 'scale(1.1)' : 'scale(1)';
   }
 
   private onTouchStart(e: TouchEvent): void {
@@ -254,6 +373,7 @@ export class MobileTouchControls {
       this.currentInput = {
         forward: false, backward: false, left: false, right: false,
         angle: 0, force: 0,
+        sprint: this.sprintActive, crouch: this.crouchActive,
       };
       return;
     }
@@ -266,6 +386,7 @@ export class MobileTouchControls {
       right: normalizedAngle < Math.PI * 0.25 || normalizedAngle > Math.PI * 1.75,
       angle: angle,
       force: force,
+      sprint: this.sprintActive, crouch: this.crouchActive,
     };
   }
 
@@ -280,6 +401,7 @@ export class MobileTouchControls {
     this.currentInput = {
       forward: false, backward: false, left: false, right: false,
       angle: 0, force: 0,
+      sprint: this.sprintActive, crouch: this.crouchActive,
     };
   }
 

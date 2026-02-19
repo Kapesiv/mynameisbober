@@ -89,11 +89,15 @@ export class InputManager {
   }
 
   isSprinting(): boolean {
-    return this.isMoving() && (this.keys.get('ShiftLeft') === true || this.keys.get('ShiftRight') === true);
+    if (this.isMoving() && (this.keys.get('ShiftLeft') === true || this.keys.get('ShiftRight') === true)) return true;
+    if (this.touch.isActive() && this.touch.getInput().sprint) return true;
+    return false;
   }
 
   isCrouching(): boolean {
-    return this.keys.get('ControlLeft') === true || this.keys.get('ControlRight') === true;
+    if (this.keys.get('ControlLeft') === true || this.keys.get('ControlRight') === true) return true;
+    if (this.touch.isActive() && this.touch.getInput().crouch) return true;
+    return false;
   }
 
   consumeMouse(): { dx: number; dy: number } {
