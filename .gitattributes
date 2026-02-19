@@ -1,0 +1,2 @@
+client/public/models/knight_artorias.glb filter=lfs diff=lfs merge=lfs -text
+client/public/models/elder_mika.glb filter=lfs diff=lfs merge=lfs -text
