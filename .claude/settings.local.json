@@ -41,7 +41,15 @@
       "Bash(git pull:*)",
       "Bash(node:*)",
       "Bash(xargs:*)",
-      "Bash(railway open:*)"
+      "Bash(railway open:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash pop:*)",
+      "Bash(git stash drop:*)",
+      "Bash(git diff-tree:*)",
+      "Bash(ls:*)",
+      "Bash(git lfs:*)",
+      "Bash(git fetch:*)",
+      "Bash(git stash:*)"
     ]
   }
 }

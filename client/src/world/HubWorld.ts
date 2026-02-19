@@ -888,17 +888,6 @@ export class HubWorld {
   private buildNPCs() {
     const npcs = [
       {
-        name: 'Elder Mika',
-        position: new THREE.Vector3(12, 0, 7),
-        color: 0x6644aa,
-        isElder: true,
-        dialog: [
-          'Welcome, adventurer! This is the Hub Town.',
-          'The Dark Forest portal leads to dangerous creatures...',
-          'I heard that enough wood scraps can be fashioned into something useful...',
-        ],
-      },
-      {
         name: 'Gernal',
         position: new THREE.Vector3(-23, 0, -12),
         color: 0xaa4422,
@@ -908,28 +897,6 @@ export class HubWorld {
           'Bring me materials and I can craft something special!',
           'Wolf pelts make excellent armor, if you gather enough...',
           'The ancient forest wood combined with sturdy pelts makes a fine bow...',
-        ],
-      },
-      {
-        name: 'Scout Aino',
-        position: new THREE.Vector3(3, 0, -25),
-        color: 0x22aa66,
-        isScout: true,
-        dialog: [
-          'The Dark Forest is just the beginning...',
-          'They say an Ancient Treant guards the deepest grove.',
-          'Be careful of the Giant Spiders - they are fast!',
-        ],
-      },
-      {
-        name: 'Battlemaster Toivo',
-        position: new THREE.Vector3(18, 0, -6),
-        color: 0xcc2222,
-        isBattlemaster: true,
-        dialog: [
-          'The Arena awaits, warrior! Prove your strength against other adventurers.',
-          'Step through the gate if you dare... only the strongest survive.',
-          'Victory in the arena brings glory and rare rewards!',
         ],
       },
     ];
@@ -1953,8 +1920,8 @@ export class HubWorld {
   private buildDecorations(batcher: StaticBatcher) {
     // Lanterns — strategically placed around the hub
     const lanternPositions = [
-      // Fountain plaza corners (4 symmetrical)
-      [5.5, 5.5], [-5.5, 5.5], [5.5, -5.5], [-5.5, -5.5],
+      // Spawn boundary corners (4 symmetrical, at distance ~12)
+      [8.5, 8.5], [-8.5, 8.5], [8.5, -8.5], [-8.5, -8.5],
       // Path to forest portal
       [1.5, -30], [-1.5, -30], [1.5, -45], [-1.5, -45],
       // Near shop entrance
@@ -2118,7 +2085,7 @@ export class HubWorld {
 
     const isBlocked = (x: number, z: number): boolean => {
       const d = Math.sqrt(x * x + z * z);
-      if (d < 6) return true; // fountain/plaza
+      if (d < 13) return true; // fountain/plaza + spawn area
       if (d > 75) return true; // too far out
       if (isOnPath(x, z)) return true;
       // Shop area

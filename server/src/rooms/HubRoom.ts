@@ -122,7 +122,7 @@ export class HubRoom extends Room<HubState> {
 
     // Spawn outside the fountain (radius ~3.6) and altar area
     const angle = Math.random() * Math.PI * 2;
-    const dist = 6 + Math.random() * 4;
+    const dist = 8 + Math.random() * 4;
     player.position.x = Math.cos(angle) * dist;
     player.position.z = Math.sin(angle) * dist;
 
