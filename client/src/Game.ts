@@ -29,6 +29,9 @@ import { skillManager } from './systems/SkillManager.js';
 import { setNetworkManager } from './network/actions.js';
 import { CLIENT_INPUT_RATE } from '@saab/shared';
 import { characterLoader } from './entities/CharacterLoader.js';
+import { NPCAIManager } from './ai/NPCAIManager.js';
+import { mountAINPCDialog, hideAINPCDialog as hideAIDialog } from './ai/ui/AINPCDialog.js';
+import { mountAILoadingOverlay } from './ai/ui/AILoadingOverlay.js';
 
 export class Game {
   private renderer: Renderer;
@@ -70,6 +73,7 @@ export class Game {
   private canvas: HTMLCanvasElement;
   private floorInfo: FloorInfo | null = null;
   private floorClearedShowing = false;
+  private npcAI = new NPCAIManager();
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -122,6 +126,8 @@ export class Game {
     mountLevelUpEffect(uiOverlay);
     mountSkillTreePanel(uiOverlay);
     mountSkillHotbar(uiOverlay);
+    mountAINPCDialog(uiOverlay);
+    mountAILoadingOverlay(uiOverlay);
 
     // ESC to close panels / toggle pause
     window.addEventListener('keydown', (e) => {
@@ -133,6 +139,7 @@ export class Game {
           hideShopPanel();
           hideInventoryPanel();
           hideSkillTreePanel();
+          this.npcAI.hideDialog();
         } else {
           this.pause();
         }
@@ -152,11 +159,13 @@ export class Game {
     const shopRoot = document.getElementById('shop-panel-root');
     const invRoot = document.getElementById('inventory-panel-root');
     const skillRoot = document.getElementById('skill-tree-root');
+    const aiRoot = document.getElementById('ai-npc-dialog-root');
     return !!(
       (npcRoot && npcRoot.children.length > 0 && npcRoot.innerHTML.length > 10) ||
       (shopRoot && shopRoot.children.length > 0 && shopRoot.innerHTML.length > 10) ||
       (invRoot && invRoot.children.length > 0 && invRoot.innerHTML.length > 10) ||
-      (skillRoot && skillRoot.children.length > 0 && skillRoot.innerHTML.length > 10)
+      (skillRoot && skillRoot.children.length > 0 && skillRoot.innerHTML.length > 10) ||
+      (aiRoot && aiRoot.children.length > 0 && aiRoot.innerHTML.length > 10)
     );
   }
 
@@ -177,11 +186,14 @@ export class Game {
     this.network.onMessage = (type, data) => this.handleMessage(type, data);
 
     // Pre-load character model
-    characterLoader.preload(['/models/player.glb', '/models/walking.glb', '/models/walkback.glb', '/models/run.glb', '/models/attack.glb', '/models/crouch.glb', '/models/viking_axe.glb']);
+    characterLoader.preload(['/models/player.glb', '/models/walking.glb', '/models/walkback.glb', '/models/run.glb', '/models/attack.glb', '/models/crouch.glb', '/models/crouch_idle.glb', '/models/viking_axe.glb']);
 
     // Build hub world
     this.floatingDamage = new FloatingDamageSystem(this.sceneManager.scene);
     this.hubWorld = new HubWorld(this.sceneManager.scene);
+
+    // Start loading AI models in background so they're ready when player reaches an NPC
+    this.npcAI.preload();
 
     const room = await this.network.joinRoom('hub', { name: playerName, gender });
     this.localPlayer = new LocalPlayer(this.sceneManager.scene, gender);
@@ -603,6 +615,8 @@ export class Game {
           if (dist < 3) {
             if (npc.name === 'Gernal') {
               showShopPanel();
+            } else if (this.npcAI.hasProfile(npc.npcId) && this.npcAI.isReady()) {
+              this.npcAI.interact(npc.npcId);
             } else {
               showNPCDialog(npc.name, npc.dialog);
             }

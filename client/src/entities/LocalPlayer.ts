@@ -114,6 +114,16 @@ export class LocalPlayer {
         console.log(`[LocalPlayer] Crouch animation loaded (${crouchClips.length} clips)`);
       } catch { /* crouch anim optional */ }
 
+      // Load crouch idle animation
+      try {
+        const crouchIdleClips = await characterLoader.loadAnimationClips('/models/crouch_idle.glb');
+        for (const clip of crouchIdleClips) {
+          clip.name = 'crouchIdle';
+          animations.push(clip);
+        }
+        console.log(`[LocalPlayer] Crouch idle animation loaded (${crouchIdleClips.length} clips)`);
+      } catch { /* crouchIdle anim optional */ }
+
       // Load backward walk animation
       try {
         const walkBackClips = await characterLoader.loadAnimationClips('/models/walkback.glb');
@@ -1179,8 +1189,10 @@ export class LocalPlayer {
     if (this.attackAnimation > 0) {
       this.attackAnimation -= dt;
       needsWeaponDrawn = true;
-    } else if (isCrouching) {
+    } else if (isCrouching && isMoving) {
       this.controller.transitionTo('crouch');
+    } else if (isCrouching) {
+      this.controller.transitionTo('crouchIdle');
     } else if (isMoving && isSprinting) {
       this.controller.transitionTo('run');
     } else if (isMoving && isMovingBackward && this.controller.hasBackwardWalk) {

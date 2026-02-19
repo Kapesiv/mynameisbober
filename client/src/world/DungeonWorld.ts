@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { StaticBatcher } from '../utils/StaticBatcher';
 
 /**
  * Procedural dark forest dungeon environment.
@@ -19,11 +20,15 @@ export class DungeonWorld {
     this.group = new THREE.Group();
     this.group.name = 'dungeon-world';
 
+    const batcher = new StaticBatcher();
+
     this.buildGround();
-    this.buildTrees();
-    this.buildRocks();
+    this.buildTrees(batcher);
+    this.buildRocks(batcher);
     this.buildLighting();
     this.buildSpores();
+
+    batcher.flush(this.group);
 
     scene.add(this.group);
   }
@@ -75,10 +80,11 @@ export class DungeonWorld {
   }
 
   // ─── Trees (ring around the arena) ────────────────────────────────
-  private buildTrees() {
+  private buildTrees(batcher: StaticBatcher) {
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x1a0e08, roughness: 0.95 });
     const leafMatDark = new THREE.MeshStandardMaterial({ color: 0x0a2a0a, roughness: 0.9 });
     const leafMatMid = new THREE.MeshStandardMaterial({ color: 0x0e3510, roughness: 0.9 });
+    const rootMat = new THREE.MeshStandardMaterial({ color: 0x150c06, roughness: 0.95 });
 
     const treeCount = 18;
     for (let i = 0; i < treeCount; i++) {
@@ -97,7 +103,7 @@ export class DungeonWorld {
       );
       trunk.position.set(x, height / 2, z);
       trunk.castShadow = true;
-      this.group.add(trunk);
+      batcher.addMergeable(trunk);
 
       // Canopy — 2-3 overlapping spheres for organic look
       const leafMat = Math.random() > 0.5 ? leafMatDark : leafMatMid;
@@ -114,11 +120,10 @@ export class DungeonWorld {
           z + (Math.random() - 0.5) * 1.5,
         );
         canopy.castShadow = true;
-        this.group.add(canopy);
+        batcher.addMergeable(canopy);
       }
 
       // Exposed roots at base
-      const rootMat = new THREE.MeshStandardMaterial({ color: 0x150c06, roughness: 0.95 });
       for (let r = 0; r < 3; r++) {
         const rootAngle = angle + (r - 1) * 0.6;
         const root = new THREE.Mesh(
@@ -131,13 +136,13 @@ export class DungeonWorld {
           z + Math.sin(rootAngle) * 0.6,
         );
         root.rotation.z = (Math.random() - 0.5) * 0.6;
-        this.group.add(root);
+        batcher.addMergeable(root);
       }
     }
   }
 
   // ─── Rocks / Boulders ─────────────────────────────────────────────
-  private buildRocks() {
+  private buildRocks(batcher: StaticBatcher) {
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x2a2a28, roughness: 0.92 });
     const mossMat = new THREE.MeshStandardMaterial({ color: 0x1a3a1a, roughness: 0.9 });
 
@@ -157,7 +162,7 @@ export class DungeonWorld {
       );
       rock.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
       rock.castShadow = true;
-      this.group.add(rock);
+      batcher.addMergeable(rock);
     }
 
     // A few arena rocks (near center area for cover)
@@ -174,7 +179,7 @@ export class DungeonWorld {
       rock.position.set(rp.x, rp.s * 0.4, rp.z);
       rock.rotation.set(0.3, Math.random() * Math.PI, 0.2);
       rock.castShadow = true;
-      this.group.add(rock);
+      batcher.addMergeable(rock);
     }
   }
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { downscaleTextures } from '../utils/downscaleTextures';
 import { getGLTFLoader } from '../utils/getGLTFLoader';
+import { StaticBatcher } from '../utils/StaticBatcher';
 
 /**
  * Skylanders-inspired colorful Hub Town
@@ -105,10 +106,14 @@ export class HubWorld {
   public shopPosition = new THREE.Vector3(-27, 0, -12);
   public pvpArenaPosition = new THREE.Vector3(20, 0, -12);
   public cavePosition = new THREE.Vector3(0, 0, -35);
-  public npcPositions: { name: string; position: THREE.Vector3; dialog: string[] }[] = [];
+  public npcPositions: { name: string; npcId: string; position: THREE.Vector3; dialog: string[] }[] = [];
 
   // Circle colliders for world objects (rocks, lanterns, pillars, NPCs)
   public colliders: WorldCollider[] = [];
+
+  // Shared materials for batching (hoisted out of loops)
+  private bowlOuterMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.8, metalness: 0.3 });
+  private bowlInnerMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
 
   // Cave entrance data (animations handled by named objects)
 
@@ -116,16 +121,21 @@ export class HubWorld {
     this.group = new THREE.Group();
     this.group.name = 'hub-world';
 
+    const batcher = new StaticBatcher();
+
     this.buildGround();
     this.buildFountainPlaza();
     this.buildShop();
-    this.buildPvPArena();
+    this.buildPvPArena(batcher);
     this.buildCaveEntrance();
     this.buildNPCs();
     // this.buildSpawnAltar();
-    this.buildDecorations();
+    this.buildDecorations(batcher);
+    this.buildRocks(batcher);
 
     this.buildLighting();
+
+    batcher.flush(this.group);
 
     scene.add(this.group);
   }
@@ -641,22 +651,22 @@ export class HubWorld {
     }
   }
 
-  private buildPvPArena() {
+  private buildPvPArena(batcher: StaticBatcher) {
     const pos = this.pvpArenaPosition;
 
     // Arena walls (colosseum-style arc)
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.75 });
 
-    // Back curved wall
+    // Back curved wall - hoisted geometry, instanced
+    const pillarGeo = new THREE.CylinderGeometry(0.5, 0.6, 6, 8);
     for (let i = -3; i <= 3; i++) {
       const angle = (i / 3) * 0.8;
       const px = pos.x + Math.sin(angle) * 6;
       const pz = pos.z - Math.cos(angle) * 6;
-      const pillarGeo = new THREE.CylinderGeometry(0.5, 0.6, 6, 8);
       const pillar = new THREE.Mesh(pillarGeo, wallMat);
       pillar.position.set(px, 3, pz);
       pillar.castShadow = true;
-      this.group.add(pillar);
+      batcher.addInstanceable('pvp-pillar', pillar);
       this.colliders.push({ x: px, z: pz, r: 0.6 });
     }
 
@@ -674,18 +684,18 @@ export class HubWorld {
     const gateLeft = new THREE.Mesh(new THREE.BoxGeometry(0.6, 4, 0.6), gateMat);
     gateLeft.position.set(pos.x - 1.5, 2, pos.z + 5);
     gateLeft.castShadow = true;
-    this.group.add(gateLeft);
+    batcher.addMergeable(gateLeft);
     this.colliders.push({ x: pos.x - 1.5, z: pos.z + 5, r: 0.4 });
 
     const gateRight = new THREE.Mesh(new THREE.BoxGeometry(0.6, 4, 0.6), gateMat);
     gateRight.position.set(pos.x + 1.5, 2, pos.z + 5);
     gateRight.castShadow = true;
-    this.group.add(gateRight);
+    batcher.addMergeable(gateRight);
     this.colliders.push({ x: pos.x + 1.5, z: pos.z + 5, r: 0.4 });
 
     const gateTop = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.6, 0.6), gateMat);
     gateTop.position.set(pos.x, 4.3, pos.z + 5);
-    this.group.add(gateTop);
+    batcher.addMergeable(gateTop);
 
     // Sign
     const sign = this.createTextSign('PVP ARENA', 0xFF4444);
@@ -936,8 +946,10 @@ export class HubWorld {
       } else {
         this.createNPCMesh(npc.name, npc.position, npc.color);
       }
+      const npcId = npc.name.toLowerCase().replace(/\s+/g, '_');
       this.npcPositions.push({
         name: npc.name,
+        npcId,
         position: npc.position,
         dialog: npc.dialog,
       });
@@ -1938,7 +1950,7 @@ export class HubWorld {
     this.group.add(altarGroup);
   }
 
-  private buildDecorations() {
+  private buildDecorations(batcher: StaticBatcher) {
     // Lanterns — strategically placed around the hub
     const lanternPositions = [
       // Fountain plaza corners (4 symmetrical)
@@ -1953,7 +1965,7 @@ export class HubWorld {
       [14, 7], [7, -38],
     ];
     for (const [x, z] of lanternPositions) {
-      this.createLantern(x, z);
+      this.createLantern(x, z, batcher);
       this.colliders.push({ x, z, r: 0.3 });
     }
 
@@ -1995,7 +2007,7 @@ export class HubWorld {
     }
   }
 
-  private createLantern(x: number, z: number) {
+  private createLantern(x: number, z: number, batcher: StaticBatcher) {
     const idx = this.brazierIndex++;
 
     // Load pillar GLB once, clone for each lantern
@@ -2005,21 +2017,21 @@ export class HubWorld {
       this.group.add(model);
     });
 
-    // Bowl (open-top brazier)
+    // Bowl (open-top brazier) - shared material for batching
     const bowlOuter = new THREE.Mesh(
       new THREE.CylinderGeometry(0.35, 0.18, 0.3, 8),
-      new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.8, metalness: 0.3 }),
+      this.bowlOuterMat,
     );
     bowlOuter.position.set(x, 1.55, z);
-    this.group.add(bowlOuter);
+    batcher.addMergeable(bowlOuter);
 
-    // Inner dark cavity
+    // Inner dark cavity - shared material for batching
     const bowlInner = new THREE.Mesh(
       new THREE.CylinderGeometry(0.28, 0.14, 0.18, 8),
-      new THREE.MeshStandardMaterial({ color: 0x111111 }),
+      this.bowlInnerMat,
     );
     bowlInner.position.set(x, 1.58, z);
-    this.group.add(bowlInner);
+    batcher.addMergeable(bowlInner);
 
     // Ember bed (glowing coals at bottom)
     const embers = new THREE.Mesh(
@@ -2077,7 +2089,7 @@ export class HubWorld {
     }
   }
 
-  private buildRocks() {
+  private buildRocks(batcher: StaticBatcher) {
     // Seeded random for deterministic placement
     let seed = 42;
     const rand = () => { seed = (seed * 16807 + 0) % 2147483647; return (seed - 1) / 2147483646; };
@@ -2232,7 +2244,7 @@ export class HubWorld {
       rock.scale.set(cfg.scaleXZ, 1, cfg.scaleXZ);
       rock.castShadow = true;
       rock.receiveShadow = true;
-      this.group.add(rock);
+      batcher.addMergeable(rock);
 
       // Register collision - use size * scaleXZ as radius
       this.colliders.push({ x: cfg.x, z: cfg.z, r: cfg.size * cfg.scaleXZ });

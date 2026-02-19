@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type AnimationState = 'idle' | 'walk' | 'walkBack' | 'run' | 'crouch' | 'attack';
+export type AnimationState = 'idle' | 'walk' | 'walkBack' | 'run' | 'crouch' | 'crouchIdle' | 'attack';
 
 const CROSSFADE_DURATION = 0.2;
 
@@ -89,7 +89,7 @@ export class CharacterController {
       const name = this.normalizeAnimName(clip.name);
       if (name === 'walk' || name === 'walkBack' || name === 'run' || name === 'attack') {
         this.stripRootMotion(clip);
-      } else if (name === 'crouch') {
+      } else if (name === 'crouch' || name === 'crouchIdle') {
         this.stripRootMotionKeepY(clip);
       }
       const action = this.mixer.clipAction(clip);
@@ -595,6 +595,8 @@ export class CharacterController {
   /** Normalize Mixamo clip names to our state names. */
   private normalizeAnimName(name: string): string {
     const lower = name.toLowerCase();
+    // crouchIdle must come before idle (since 'crouchidle' contains 'idle')
+    if (lower.includes('crouchidle') || lower.includes('crouch idle') || lower.includes('crouch_idle')) return 'crouchIdle';
     if (lower.includes('idle') || lower.includes('breathing')) return 'idle';
     if (lower === 'run' || lower.includes('dribble') || lower.includes('sprint')) return 'run';
     if (lower.includes('walkback') || lower.includes('walk back') || lower.includes('walk_back')) return 'walkBack';

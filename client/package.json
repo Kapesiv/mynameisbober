@@ -9,15 +9,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "three": "^0.172.0",
+    "@mlc-ai/web-llm": "^0.2.81",
     "colyseus.js": "^0.15.0",
-    "preact": "^10.25.0"
+    "kokoro-js": "^1.2.1",
+    "preact": "^10.25.0",
+    "three": "^0.172.0"
   },
   "devDependencies": {
-    "@types/three": "^0.172.0",
     "@preact/preset-vite": "^2.9.0",
-    "vite": "^6.2.0",
+    "@saab/shared": "*",
+    "@types/three": "^0.172.0",
     "typescript": "^5.7.0",
-    "@saab/shared": "*"
+    "vite": "^6.2.0"
   }
 }
