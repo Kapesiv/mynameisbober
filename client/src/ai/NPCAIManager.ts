@@ -66,10 +66,15 @@ export class NPCAIManager {
     this.loadPromise = (async () => {
       try {
         console.log('[NPC-AI] Loading LLM and TTS models...');
+        let lastLLMLog = 0;
         await Promise.all([
           this.brain.init((progress, text) => {
             updateLLMProgress(progress, text);
-            if (progress === 1) console.log('[NPC-AI] LLM loaded');
+            const now = Date.now();
+            if (now - lastLLMLog > 3000 || progress >= 1) {
+              console.log(`[NPC-AI] LLM progress: ${(progress * 100).toFixed(0)}% - ${text}`);
+              lastLLMLog = now;
+            }
           }),
           this.voice.init((progress, status) => {
             updateTTSProgress(progress, status);
