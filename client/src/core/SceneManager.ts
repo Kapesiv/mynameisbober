@@ -36,7 +36,7 @@ export class SceneManager {
             for (const mat of mats) {
               mat.depthWrite = false;
               mat.side = THREE.DoubleSide;
-              mat.fog = false; // sky ignores fog
+              (mat as any).fog = false; // sky ignores fog
               // Boost emissive so panorama is bright without scene lights
               if ('emissive' in mat) {
                 (mat as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xffffff);
