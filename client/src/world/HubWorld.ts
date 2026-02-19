@@ -115,6 +115,8 @@ export class HubWorld {
   private bowlOuterMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.8, metalness: 0.3 });
   private bowlInnerMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
 
+  private riverMesh: THREE.Mesh | null = null;
+
   // Cave entrance data (animations handled by named objects)
 
   constructor(scene: THREE.Scene) {
@@ -132,6 +134,7 @@ export class HubWorld {
     // this.buildSpawnAltar();
     this.buildDecorations(batcher);
     this.buildRocks(batcher);
+    this.buildRiver();
 
     this.buildLighting();
 
@@ -2218,6 +2221,181 @@ export class HubWorld {
     }
   }
 
+  private buildRiver() {
+    // Curved river along the eastern side of the hub world
+    const waypoints = [
+      [35, -55], [42, -30], [48, -5], [45, 20], [38, 45], [28, 58],
+    ];
+    const width = 6;
+
+    // Cumulative arc length
+    const arcLengths = [0];
+    for (let i = 1; i < waypoints.length; i++) {
+      const dx = waypoints[i][0] - waypoints[i - 1][0];
+      const dz = waypoints[i][1] - waypoints[i - 1][1];
+      arcLengths.push(arcLengths[i - 1] + Math.sqrt(dx * dx + dz * dz));
+    }
+    const totalLen = arcLengths[arcLengths.length - 1];
+
+    const sampleAt = (dist: number) => {
+      dist = Math.max(0, Math.min(totalLen, dist));
+      let seg = 0;
+      for (let i = 1; i < arcLengths.length; i++) {
+        if (arcLengths[i] >= dist) { seg = i - 1; break; }
+      }
+      const segLen = arcLengths[seg + 1] - arcLengths[seg];
+      const t = segLen > 0 ? (dist - arcLengths[seg]) / segLen : 0;
+      const x = waypoints[seg][0] + (waypoints[seg + 1][0] - waypoints[seg][0]) * t;
+      const z = waypoints[seg][1] + (waypoints[seg + 1][1] - waypoints[seg][1]) * t;
+      const tx = waypoints[seg + 1][0] - waypoints[seg][0];
+      const tz = waypoints[seg + 1][1] - waypoints[seg][1];
+      const tLen = Math.sqrt(tx * tx + tz * tz) || 1;
+      return { x, z, tx: tx / tLen, tz: tz / tLen };
+    };
+
+    const segsL = Math.max(50, Math.floor(totalLen * 2));
+    const segsW = 20;
+    const rows = segsL + 1;
+    const cols = segsW + 1;
+    const vtxCount = rows * cols;
+
+    const positions = new Float32Array(vtxCount * 3);
+    const uvs = new Float32Array(vtxCount * 2);
+
+    for (let r = 0; r < rows; r++) {
+      const dist = (r / segsL) * totalLen;
+      const { x: cx, z: cz, tx, tz } = sampleAt(dist);
+      const perpX = -tz;
+      const perpZ = tx;
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        const across = ((c / segsW) - 0.5) * width;
+        const wx = cx + perpX * across;
+        const wz = cz + perpZ * across;
+        const ripple = Math.sin(wx * 0.5 + wz * 0.4) * 0.04 + Math.cos(wz * 0.6 - wx * 0.3) * 0.03;
+        positions[idx * 3] = wx;
+        positions[idx * 3 + 1] = ripple;
+        positions[idx * 3 + 2] = wz;
+        uvs[idx * 2] = c / segsW;
+        uvs[idx * 2 + 1] = dist / width;
+      }
+    }
+
+    const indexCount = segsL * segsW * 6;
+    const indexArr = new Uint32Array(indexCount);
+    let ii = 0;
+    for (let r = 0; r < segsL; r++) {
+      for (let c = 0; c < segsW; c++) {
+        const tl = r * cols + c;
+        const tr = tl + 1;
+        const bl = tl + cols;
+        const br = bl + 1;
+        indexArr[ii++] = tl; indexArr[ii++] = bl; indexArr[ii++] = tr;
+        indexArr[ii++] = tr; indexArr[ii++] = bl; indexArr[ii++] = br;
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    geo.setIndex(new THREE.BufferAttribute(indexArr, 1));
+    geo.computeVertexNormals();
+
+    // Procedural canvas texture for flowing water
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#1a4878';
+    ctx.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 18; i++) {
+      const y = (i / 18) * 256;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      for (let x = 0; x <= 256; x += 3) {
+        ctx.lineTo(x, y + Math.sin(x * 0.06 + i * 0.9) * 7 + Math.sin(x * 0.14 + i * 1.5) * 3);
+      }
+      ctx.strokeStyle = `rgba(70, 140, 210, ${0.18 + Math.sin(i * 0.7) * 0.06})`;
+      ctx.lineWidth = 1.2 + Math.sin(i * 1.1) * 0.4;
+      ctx.stroke();
+    }
+    for (let i = 0; i < 30; i++) {
+      const sx = (Math.sin(i * 3.1) * 0.5 + 0.5) * 256;
+      const sy = (Math.cos(i * 2.3) * 0.5 + 0.5) * 256;
+      const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, 12);
+      sg.addColorStop(0, 'rgba(180, 230, 255, 0.22)');
+      sg.addColorStop(1, 'rgba(180, 230, 255, 0)');
+      ctx.fillStyle = sg;
+      ctx.fillRect(sx - 12, sy - 12, 24, 24);
+    }
+    const waterTex = new THREE.CanvasTexture(canvas);
+    waterTex.wrapS = THREE.RepeatWrapping;
+    waterTex.wrapT = THREE.RepeatWrapping;
+    waterTex.repeat.set(1.5, 4);
+
+    const waterMat = new THREE.MeshStandardMaterial({
+      map: waterTex,
+      color: 0x2878c0,
+      roughness: 0.08,
+      metalness: 0.4,
+      transparent: true,
+      opacity: 0.85,
+    });
+
+    this.riverMesh = new THREE.Mesh(geo, waterMat);
+    this.riverMesh.name = 'river';
+    this.riverMesh.position.y = 0.07;
+    this.riverMesh.receiveShadow = true;
+    this.group.add(this.riverMesh); // Animated — direct add, not batcher
+
+    // Sandy riverbanks on both sides
+    const bankMat = new THREE.MeshStandardMaterial({ color: 0x7a6a48, roughness: 0.95, metalness: 0 });
+    for (const side of [-1, 1] as const) {
+      const bankW = 2.0;
+      const bCols = Math.floor(bankW * 4) + 1;
+      const bVtxCount = rows * bCols;
+      const bPositions = new Float32Array(bVtxCount * 3);
+      for (let r = 0; r < rows; r++) {
+        const dist = (r / segsL) * totalLen;
+        const { x: cx, z: cz, tx: btx, tz: btz } = sampleAt(dist);
+        const bpx = -btz;
+        const bpz = btx;
+        for (let c = 0; c < bCols; c++) {
+          const idx = r * bCols + c;
+          const bankAcross = side * (width / 2) + side * (c / (bCols - 1)) * bankW;
+          bPositions[idx * 3] = cx + bpx * bankAcross;
+          bPositions[idx * 3 + 1] = (c / (bCols - 1)) * 0.3;
+          bPositions[idx * 3 + 2] = cz + bpz * bankAcross;
+        }
+      }
+      const bIdxCount = segsL * (bCols - 1) * 6;
+      const bIndices = new Uint32Array(bIdxCount);
+      let bi = 0;
+      for (let r = 0; r < segsL; r++) {
+        for (let c = 0; c < bCols - 1; c++) {
+          const tl = r * bCols + c;
+          const tr = tl + 1;
+          const bl = tl + bCols;
+          const br = bl + 1;
+          bIndices[bi++] = tl; bIndices[bi++] = bl; bIndices[bi++] = tr;
+          bIndices[bi++] = tr; bIndices[bi++] = bl; bIndices[bi++] = br;
+        }
+      }
+      const bankGeo = new THREE.BufferGeometry();
+      bankGeo.setAttribute('position', new THREE.BufferAttribute(bPositions, 3));
+      bankGeo.setIndex(new THREE.BufferAttribute(bIndices, 1));
+      bankGeo.computeVertexNormals();
+      const bankMesh = new THREE.Mesh(bankGeo, bankMat);
+      bankMesh.receiveShadow = true;
+      this.group.add(bankMesh);
+    }
+
+    // Soft blue glow over the river
+    const riverLight = new THREE.PointLight(0x4090d0, 1.0, 25);
+    riverLight.position.set(48, 1.5, 0);
+    this.group.add(riverLight);
+  }
+
   private buildLighting() {
     // Soft ambient base
     const ambient = new THREE.AmbientLight(0x3a4a5a, 0.3);
@@ -2407,6 +2585,12 @@ export class HubWorld {
         child.scale.set(s, s, s);
       }
     });
+
+    // ── River flow ────────────────────────────────────────────────
+    if (this.riverMesh) {
+      const rMat = this.riverMesh.material as THREE.MeshStandardMaterial;
+      if (rMat.map) rMat.map.offset.y -= 0.004;
+    }
 
     // Spawn orb
     const spawnOrb = this.group.getObjectByName('spawn-orb');
