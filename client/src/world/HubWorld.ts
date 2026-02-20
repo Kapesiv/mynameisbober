@@ -670,61 +670,90 @@ export class HubWorld {
     }
   }
 
-  private buildPvPArena(batcher: StaticBatcher) {
+  private buildPvPArena(_batcher: StaticBatcher) {
     const pos = this.pvpArenaPosition;
 
-    // Arena walls (colosseum-style arc)
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.75 });
+    // ── Load magic portal GLB ─────────────────────────────────────────
+    {
+      const loader = getGLTFLoader();
+      loader.load('/magic-portal.glb', (gltf) => {
+        const model = gltf.scene;
+        model.position.copy(pos);
+        model.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        downscaleTextures(model);
 
-    // Back curved wall - hoisted geometry, instanced
-    const pillarGeo = new THREE.CylinderGeometry(0.5, 0.6, 6, 8);
-    for (let i = -3; i <= 3; i++) {
-      const angle = (i / 3) * 0.8;
-      const px = pos.x + Math.sin(angle) * 6;
-      const pz = pos.z - Math.cos(angle) * 6;
-      const pillar = new THREE.Mesh(pillarGeo, wallMat);
-      pillar.position.set(px, 3, pz);
-      pillar.castShadow = true;
-      batcher.addInstanceable('pvp-pillar', pillar);
-      this.colliders.push({ x: px, z: pz, r: 0.6 });
+        // Auto-scale to a reasonable size
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const targetHeight = 6;
+        const scale = targetHeight / Math.max(size.y, 0.01);
+        model.scale.setScalar(scale);
+
+        // Ground the model
+        model.updateMatrixWorld(true);
+        const groundBox = new THREE.Box3().setFromObject(model);
+        model.position.y -= groundBox.min.y;
+
+        this.group.add(model);
+        // Invalidate anim cache so new named objects are found
+        this._animCacheBuilt = false;
+        this._animCache = {};
+        console.log(`[HubWorld] Magic portal loaded, scale: ${scale.toFixed(2)}, size:`, size.toArray().map(v => v.toFixed(1)));
+      }, undefined, (err) => {
+        console.error('[HubWorld] Failed to load magic portal GLB:', err);
+      });
     }
 
-    // Arena floor
-    const floorGeo = new THREE.CircleGeometry(5, 24);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0xAA8844, roughness: 0.9 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(pos.x, 0.04, pos.z);
-    floor.receiveShadow = true;
-    this.group.add(floor);
+    // Portal surface — swirling disc
+    const portalY = 3.0;
+    const portalRadius = 1.5;
+    const portalGeo = new THREE.CircleGeometry(portalRadius, 32);
+    const portalMat = new THREE.MeshBasicMaterial({
+      color: 0x2244ff,
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const portalDisc = new THREE.Mesh(portalGeo, portalMat);
+    portalDisc.position.set(pos.x, portalY, pos.z);
+    portalDisc.rotation.x = -Math.PI * 0.1;
+    portalDisc.name = 'magic-portal-disc';
+    this.group.add(portalDisc);
 
-    // Gate entrance
-    const gateMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6 });
-    const gateLeft = new THREE.Mesh(new THREE.BoxGeometry(0.6, 4, 0.6), gateMat);
-    gateLeft.position.set(pos.x - 1.5, 2, pos.z + 5);
-    gateLeft.castShadow = true;
-    batcher.addMergeable(gateLeft);
-    this.colliders.push({ x: pos.x - 1.5, z: pos.z + 5, r: 0.4 });
+    // Inner swirl layer
+    const swirlGeo = new THREE.CircleGeometry(portalRadius * 0.55, 24);
+    const swirlMat = new THREE.MeshBasicMaterial({
+      color: 0x88ccff,
+      transparent: true,
+      opacity: 0.3,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const swirl = new THREE.Mesh(swirlGeo, swirlMat);
+    swirl.position.set(pos.x, portalY, pos.z + 0.05);
+    swirl.rotation.x = -Math.PI * 0.1;
+    swirl.name = 'magic-portal-swirl';
+    this.group.add(swirl);
 
-    const gateRight = new THREE.Mesh(new THREE.BoxGeometry(0.6, 4, 0.6), gateMat);
-    gateRight.position.set(pos.x + 1.5, 2, pos.z + 5);
-    gateRight.castShadow = true;
-    batcher.addMergeable(gateRight);
-    this.colliders.push({ x: pos.x + 1.5, z: pos.z + 5, r: 0.4 });
-
-    const gateTop = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.6, 0.6), gateMat);
-    gateTop.position.set(pos.x, 4.3, pos.z + 5);
-    batcher.addMergeable(gateTop);
+    // Portal glow light
+    const portalLight = new THREE.PointLight(0x4488ff, 4, 10);
+    portalLight.position.set(pos.x, portalY, pos.z + 0.5);
+    portalLight.name = 'magic-portal-light';
+    this.group.add(portalLight);
 
     // Sign
-    const sign = this.createTextSign('PVP ARENA', 0xFF4444);
-    sign.position.set(pos.x, 5.5, pos.z + 5);
+    const sign = this.createTextSign('MAGIC PORTAL', 0x4488ff);
+    sign.position.set(pos.x, 6.5, pos.z + 2);
     this.group.add(sign);
 
-    // Red glow
-    const pvpLight = new THREE.PointLight(0xff4444, 1.5, 12);
-    pvpLight.position.set(pos.x, 4, pos.z);
-    this.group.add(pvpLight);
+    // Collider around the portal
+    this.colliders.push({ x: pos.x, z: pos.z, r: 2.0 });
   }
 
   private buildCaveEntrance() {
@@ -1778,6 +1807,24 @@ export class HubWorld {
     const portalLight = this.getAnimObj('dragon-portal-light');
     if (portalLight) {
       (portalLight as THREE.PointLight).intensity = 3.0 + Math.sin(time * 1.0) * 1.5;
+    }
+
+    // ── Magic portal animations ──────────────────────────────────────
+    const magicDisc = this.getAnimObj('magic-portal-disc');
+    if (magicDisc) {
+      magicDisc.rotation.z = time * 0.4;
+      const mMat = (magicDisc as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      mMat.opacity = 0.5 + Math.sin(time * 0.9) * 0.2;
+    }
+    const magicSwirl = this.getAnimObj('magic-portal-swirl');
+    if (magicSwirl) {
+      magicSwirl.rotation.z = -time * 0.7;
+      const sMat = (magicSwirl as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      sMat.opacity = 0.2 + Math.sin(time * 1.3 + 0.8) * 0.15;
+    }
+    const magicLight = this.getAnimObj('magic-portal-light');
+    if (magicLight) {
+      (magicLight as THREE.PointLight).intensity = 3.0 + Math.sin(time * 1.1) * 1.5;
     }
 
     // Mist drifting from the maw

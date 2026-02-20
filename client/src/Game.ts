@@ -683,7 +683,7 @@ export class Game {
         { x: -10, z: -25, color: '#ff8800' },   // Ice Caves
         { x: 10, z: -25, color: '#ff8800' },    // Volcano
         { x: -12, z: -5, color: '#ffdd00' },    // Shop
-        { x: 15, z: -8, color: '#ff4444' },     // PvP Arena
+        { x: 15, z: -8, color: '#4488ff' },     // Magic Portal
       );
     }
 
